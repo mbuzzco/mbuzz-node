@@ -1,4 +1,5 @@
 import * as https from 'node:https';
+import * as http from 'node:http';
 import { config } from './config';
 
 const VERSION = '0.1.0';
@@ -14,7 +15,10 @@ function makeRequest(
   payload: Record<string, unknown>
 ): Promise<{ statusCode: number; body: string }> {
   return new Promise((resolve, reject) => {
-    const url = new URL(path, config.apiUrl);
+    // Ensure base URL ends with / and path doesn't start with /
+    const baseUrl = config.apiUrl.endsWith('/') ? config.apiUrl : `${config.apiUrl}/`;
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    const url = new URL(cleanPath, baseUrl);
     const body = JSON.stringify(payload);
 
     const options: https.RequestOptions = {
@@ -30,7 +34,9 @@ function makeRequest(
 
     debugLog(`POST ${url.toString()}`, payload);
 
-    const req = https.request(url, options, (res) => {
+    // Use http or https based on the URL protocol
+    const requestModule = url.protocol === 'https:' ? https : http;
+    const req = requestModule.request(url, options, (res) => {
       let responseBody = '';
 
       res.on('data', (chunk) => {
