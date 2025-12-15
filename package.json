@@ -1,0 +1,63 @@
+{
+  "name": "mbuzz",
+  "version": "0.1.0",
+  "description": "Server-side multi-touch attribution for Node.js",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src test --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "analytics",
+    "attribution",
+    "marketing",
+    "tracking",
+    "multi-touch",
+    "express",
+    "middleware"
+  ],
+  "author": "Multibuzz",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multibuzz/mbuzz-node"
+  },
+  "bugs": {
+    "url": "https://github.com/multibuzz/mbuzz-node/issues"
+  },
+  "homepage": "https://mbuzz.co/docs/sdks/nodejs",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "peerDependencies": {
+    "express": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    }
+  }
+}
