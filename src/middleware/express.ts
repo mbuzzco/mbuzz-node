@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
 import { generateId } from '../utils/identifier';
+import { generateDeterministic, generateFromFingerprint } from '../utils/sessionId';
 import { createSession } from '../client/sessionRequest';
 import {
   VISITOR_COOKIE,
@@ -41,9 +42,29 @@ const getVisitorId = (req: Request): { id: string; isNew: boolean } => {
   return existing ? { id: existing, isNew: false } : { id: generateId(), isNew: true };
 };
 
-const getSessionId = (req: Request): { id: string; isNew: boolean } => {
+const getClientIp = (req: Request): string => {
+  const forwarded = req.headers?.['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip ?? req.socket?.remoteAddress ?? 'unknown';
+};
+
+const getUserAgent = (req: Request): string => {
+  return req.headers?.['user-agent'] ?? 'unknown';
+};
+
+const getSessionId = (req: Request, existingVisitorId: string | null): { id: string; isNew: boolean } => {
   const existing = req.cookies?.[SESSION_COOKIE];
-  return existing ? { id: existing, isNew: false } : { id: generateId(), isNew: true };
+  if (existing) {
+    return { id: existing, isNew: false };
+  }
+
+  const sessionId = existingVisitorId
+    ? generateDeterministic(existingVisitorId)
+    : generateFromFingerprint(getClientIp(req), getUserAgent(req));
+
+  return { id: sessionId, isNew: true };
 };
 
 const setCookies = (
@@ -81,8 +102,9 @@ export const createMiddleware = (): ExpressMiddleware => {
       return next();
     }
 
+    const existingVisitorId = req.cookies?.[VISITOR_COOKIE] ?? null;
     const visitor = getVisitorId(req);
-    const session = getSessionId(req);
+    const session = getSessionId(req, existingVisitorId);
     const secure = isSecure(req);
 
     attachMbuzz(req, visitor.id, session.id);
