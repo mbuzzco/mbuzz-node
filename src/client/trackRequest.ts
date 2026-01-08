@@ -22,7 +22,6 @@ const parseResponse = (
     eventId: response.events[0].id,
     eventType: options.eventType,
     visitorId: options.visitorId,
-    sessionId: options.sessionId,
   };
 };
 

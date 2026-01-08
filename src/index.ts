@@ -6,7 +6,6 @@ export {
   identify,
   middleware,
   visitorId,
-  sessionId,
   userId,
 } from './mbuzz';
 
@@ -18,7 +17,7 @@ export type {
   TrackOptions,
   ConversionOptions,
   IdentifyOptions,
-  SessionOptions,
+  Identifier,
 } from './client/types';
 
 // Context (for advanced usage)

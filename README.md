@@ -81,7 +81,7 @@ mbuzz.init({
   apiKey: process.env.MBUZZ_API_KEY
 });
 
-// Add middleware - handles cookies and session tracking
+// Add middleware - handles visitor cookies and context
 app.use(mbuzz.middleware());
 ```
 
