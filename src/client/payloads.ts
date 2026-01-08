@@ -1,6 +1,7 @@
 // Pure payload builder functions
+// NOTE: Session ID removed in v0.7.0 - server handles session resolution
 
-import type { TrackOptions, ConversionOptions, IdentifyOptions, SessionOptions } from './types';
+import type { TrackOptions, ConversionOptions, IdentifyOptions } from './types';
 
 const timestamp = (): string => new Date().toISOString();
 
@@ -13,11 +14,13 @@ export const buildTrackPayload = (options: TrackOptions) => ({
   events: [
     compact({
       visitor_id: options.visitorId,
-      session_id: options.sessionId,
       user_id: options.userId,
       event_type: options.eventType,
       properties: options.properties ?? {},
       timestamp: timestamp(),
+      ip: options.ip,
+      user_agent: options.userAgent,
+      identifier: options.identifier,
     }),
   ],
 });
@@ -34,6 +37,9 @@ export const buildConversionPayload = (options: ConversionOptions) => ({
     inherit_acquisition: options.inheritAcquisition,
     properties: options.properties ?? {},
     timestamp: timestamp(),
+    ip: options.ip,
+    user_agent: options.userAgent,
+    identifier: options.identifier,
   }),
 });
 
@@ -42,14 +48,4 @@ export const buildIdentifyPayload = (options: IdentifyOptions) => ({
   visitor_id: options.visitorId,
   traits: options.traits ?? {},
   timestamp: timestamp(),
-});
-
-export const buildSessionPayload = (options: SessionOptions) => ({
-  session: {
-    visitor_id: options.visitorId,
-    session_id: options.sessionId,
-    url: options.url,
-    referrer: options.referrer,
-    started_at: (options.startedAt ?? new Date()).toISOString(),
-  },
 });

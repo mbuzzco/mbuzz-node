@@ -2,26 +2,30 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface RequestContextOptions {
   visitorId: string;
-  sessionId: string;
+  ip: string;
+  userAgent: string;
   userId?: string;
   url?: string;
   referrer?: string;
 }
 
 /**
- * Request context that holds visitor/session/user IDs and request metadata.
- * Used to automatically enrich events with URL and referrer.
+ * Request context that holds visitor ID, request metadata, and fingerprint info.
+ * Used to automatically enrich events with URL, referrer, ip, and user_agent.
+ * NOTE: Session resolution is now handled server-side (v0.7.0+)
  */
 export class RequestContext {
   readonly visitorId: string;
-  readonly sessionId: string;
+  readonly ip: string;
+  readonly userAgent: string;
   readonly userId?: string;
   readonly url?: string;
   readonly referrer?: string;
 
   constructor(options: RequestContextOptions) {
     this.visitorId = options.visitorId;
-    this.sessionId = options.sessionId;
+    this.ip = options.ip;
+    this.userAgent = options.userAgent;
     this.userId = options.userId;
     this.url = options.url;
     this.referrer = options.referrer;

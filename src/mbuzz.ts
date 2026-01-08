@@ -6,16 +6,17 @@ import { identify as identifyUser } from './client/identifyRequest';
 import { createMiddleware } from './middleware/express';
 import type { TrackResult } from './client/trackRequest';
 import type { ConversionResult } from './client/conversionRequest';
+import type { Identifier } from './client/types';
 
 // Re-export types
-export type { MbuzzOptions, TrackResult, ConversionResult };
+export type { MbuzzOptions, TrackResult, ConversionResult, Identifier };
 
 // Initialize SDK
 export const init = (options: MbuzzOptions): void => initConfig(options);
 
 // Context accessors
+// NOTE: sessionId removed in v0.7.0 - server handles session resolution
 export const visitorId = (): string | undefined => getContext()?.visitorId;
-export const sessionId = (): string | undefined => getContext()?.sessionId;
 export const userId = (): string | undefined => getContext()?.userId;
 
 // Middleware
@@ -24,8 +25,8 @@ export const middleware = createMiddleware;
 // Event tracking
 export interface EventOptions {
   visitorId?: string;
-  sessionId?: string;
   userId?: string;
+  identifier?: Identifier;
   [key: string]: unknown;
 }
 
@@ -38,10 +39,11 @@ export const event = async (
 
   return track({
     visitorId: ctx?.visitorId,
-    sessionId: ctx?.sessionId,
     userId: ctx?.userId,
     eventType,
     properties: enrichedProps,
+    ip: ctx?.ip,
+    userAgent: ctx?.userAgent,
   });
 };
 
@@ -55,6 +57,7 @@ export interface ConversionOptions {
   isAcquisition?: boolean;
   inheritAcquisition?: boolean;
   properties?: Record<string, unknown>;
+  identifier?: Identifier;
 }
 
 export const conversion = async (
@@ -73,6 +76,9 @@ export const conversion = async (
     isAcquisition: options.isAcquisition,
     inheritAcquisition: options.inheritAcquisition,
     properties: options.properties,
+    ip: ctx?.ip,
+    userAgent: ctx?.userAgent,
+    identifier: options.identifier,
   });
 };
 

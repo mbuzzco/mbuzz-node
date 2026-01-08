@@ -1,18 +1,12 @@
 import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
 import { generateId } from '../utils/identifier';
-import { generateDeterministic, generateFromFingerprint } from '../utils/sessionId';
-import { createSession } from '../client/sessionRequest';
-import {
-  VISITOR_COOKIE,
-  SESSION_COOKIE,
-  visitorCookieOptions,
-  sessionCookieOptions,
-} from './cookies';
+import { VISITOR_COOKIE, visitorCookieOptions } from './cookies';
 
 export interface MbuzzRequest {
   visitorId: string;
-  sessionId: string;
+  ip: string;
+  userAgent: string;
   userId?: string;
 }
 
@@ -54,42 +48,12 @@ const getUserAgent = (req: Request): string => {
   return req.headers?.['user-agent'] ?? 'unknown';
 };
 
-const getSessionId = (req: Request, existingVisitorId: string | null): { id: string; isNew: boolean } => {
-  const existing = req.cookies?.[SESSION_COOKIE];
-  if (existing) {
-    return { id: existing, isNew: false };
-  }
-
-  const sessionId = existingVisitorId
-    ? generateDeterministic(existingVisitorId)
-    : generateFromFingerprint(getClientIp(req), getUserAgent(req));
-
-  return { id: sessionId, isNew: true };
-};
-
-const setCookies = (
-  res: Response,
-  visitorId: string,
-  sessionId: string,
-  secure: boolean
-): void => {
+const setCookie = (res: Response, visitorId: string, secure: boolean): void => {
   res.cookie(VISITOR_COOKIE, visitorId, visitorCookieOptions(secure));
-  res.cookie(SESSION_COOKIE, sessionId, sessionCookieOptions(secure));
 };
 
-const attachMbuzz = (req: Request, visitorId: string, sessionId: string): void => {
-  req.mbuzz = { visitorId, sessionId, userId: undefined };
-};
-
-const createSessionAsync = (
-  visitorId: string,
-  sessionId: string,
-  url: string,
-  referrer?: string
-): void => {
-  setImmediate(() => {
-    createSession({ visitorId, sessionId, url, referrer });
-  });
+const attachMbuzz = (req: Request, visitorId: string, ip: string, userAgent: string): void => {
+  req.mbuzz = { visitorId, ip, userAgent, userId: undefined };
 };
 
 export const createMiddleware = (): ExpressMiddleware => {
@@ -102,17 +66,13 @@ export const createMiddleware = (): ExpressMiddleware => {
       return next();
     }
 
-    const existingVisitorId = req.cookies?.[VISITOR_COOKIE] ?? null;
     const visitor = getVisitorId(req);
-    const session = getSessionId(req, existingVisitorId);
+    const ip = getClientIp(req);
+    const userAgent = getUserAgent(req);
     const secure = isSecure(req);
 
-    attachMbuzz(req, visitor.id, session.id);
-    setCookies(res, visitor.id, session.id, secure);
-
-    if (session.isNew) {
-      createSessionAsync(visitor.id, session.id, getFullUrl(req), getReferrer(req));
-    }
+    attachMbuzz(req, visitor.id, ip, userAgent);
+    setCookie(res, visitor.id, secure);
 
     next();
   };

@@ -1,11 +1,20 @@
 // Shared types for client requests
+// NOTE: Session ID removed in v0.7.0 - server handles session resolution
+
+export interface Identifier {
+  email?: string;
+  user_id?: string;
+  [key: string]: string | undefined;
+}
 
 export interface TrackOptions {
   visitorId?: string;
-  sessionId?: string;
   userId?: string;
   eventType: string;
   properties?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+  identifier?: Identifier;
 }
 
 export interface TrackResult {
@@ -13,7 +22,6 @@ export interface TrackResult {
   eventId: string;
   eventType: string;
   visitorId?: string;
-  sessionId?: string;
 }
 
 export interface ConversionOptions {
@@ -26,6 +34,9 @@ export interface ConversionOptions {
   isAcquisition?: boolean;
   inheritAcquisition?: boolean;
   properties?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+  identifier?: Identifier;
 }
 
 export interface ConversionResult {
@@ -38,12 +49,4 @@ export interface IdentifyOptions {
   userId: string | number;
   visitorId?: string;
   traits?: Record<string, unknown>;
-}
-
-export interface SessionOptions {
-  visitorId: string;
-  sessionId: string;
-  url: string;
-  referrer?: string;
-  startedAt?: Date;
 }

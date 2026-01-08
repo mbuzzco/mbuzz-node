@@ -68,7 +68,8 @@ describe('mbuzz', () => {
 
       const ctx = new context.RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         url: 'https://example.com/auto',
         referrer: 'https://google.com',
       });
@@ -80,7 +81,8 @@ describe('mbuzz', () => {
       expect(trackRequest.track).toHaveBeenCalledWith(
         expect.objectContaining({
           visitorId: 'visitor_abc',
-          sessionId: 'session_xyz',
+          ip: '192.168.1.1',
+          userAgent: 'Mozilla/5.0',
           properties: expect.objectContaining({
             url: 'https://example.com/auto',
             referrer: 'https://google.com',
@@ -121,7 +123,7 @@ describe('mbuzz', () => {
       );
     });
 
-    it('uses visitorId from context', async () => {
+    it('uses visitorId and ip/userAgent from context', async () => {
       vi.mocked(conversionRequest.conversion).mockResolvedValue({
         success: true,
         conversionId: 'conv_1',
@@ -129,7 +131,8 @@ describe('mbuzz', () => {
 
       const ctx = new context.RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '10.0.0.1',
+        userAgent: 'Chrome/120',
       });
 
       await context.withContext(ctx, async () => {
@@ -139,6 +142,8 @@ describe('mbuzz', () => {
       expect(conversionRequest.conversion).toHaveBeenCalledWith(
         expect.objectContaining({
           visitorId: 'visitor_abc',
+          ip: '10.0.0.1',
+          userAgent: 'Chrome/120',
         })
       );
     });
@@ -180,7 +185,8 @@ describe('mbuzz', () => {
 
       const ctx = new context.RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       await context.withContext(ctx, async () => {
@@ -219,29 +225,15 @@ describe('mbuzz', () => {
       expect(mbuzz.visitorId()).toBeUndefined();
     });
 
-    it('sessionId returns undefined outside context', () => {
-      expect(mbuzz.sessionId()).toBeUndefined();
-    });
-
     it('visitorId returns value from context', async () => {
       const ctx = new context.RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       await context.withContext(ctx, async () => {
         expect(mbuzz.visitorId()).toBe('visitor_abc');
-      });
-    });
-
-    it('sessionId returns value from context', async () => {
-      const ctx = new context.RequestContext({
-        visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
-      });
-
-      await context.withContext(ctx, async () => {
-        expect(mbuzz.sessionId()).toBe('session_xyz');
       });
     });
   });

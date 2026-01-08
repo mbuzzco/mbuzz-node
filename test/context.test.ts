@@ -15,23 +15,35 @@ describe('context', () => {
     it('stores visitorId', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
       expect(ctx.visitorId).toBe('visitor_abc');
     });
 
-    it('stores sessionId', () => {
+    it('stores ip', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
-      expect(ctx.sessionId).toBe('session_xyz');
+      expect(ctx.ip).toBe('192.168.1.1');
+    });
+
+    it('stores userAgent', () => {
+      const ctx = new RequestContext({
+        visitorId: 'visitor_abc',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
+      });
+      expect(ctx.userAgent).toBe('Mozilla/5.0');
     });
 
     it('stores userId when provided', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         userId: 'user_123',
       });
       expect(ctx.userId).toBe('user_123');
@@ -40,7 +52,8 @@ describe('context', () => {
     it('stores url when provided', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         url: 'https://example.com/page',
       });
       expect(ctx.url).toBe('https://example.com/page');
@@ -49,7 +62,8 @@ describe('context', () => {
     it('stores referrer when provided', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         referrer: 'https://google.com',
       });
       expect(ctx.referrer).toBe('https://google.com');
@@ -60,7 +74,8 @@ describe('context', () => {
     it('adds url and referrer to properties', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         url: 'https://example.com/page',
         referrer: 'https://google.com',
       });
@@ -77,7 +92,8 @@ describe('context', () => {
     it('does not include url if not set', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       const enriched = ctx.enrichProperties({ custom: 'value' });
@@ -89,7 +105,8 @@ describe('context', () => {
     it('does not include referrer if not set', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         url: 'https://example.com/page',
       });
 
@@ -102,7 +119,8 @@ describe('context', () => {
     it('custom properties override context properties', () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
         url: 'https://example.com/auto',
       });
 
@@ -116,7 +134,8 @@ describe('context', () => {
     it('provides context within callback', async () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       await withContext(ctx, () => {
@@ -129,7 +148,8 @@ describe('context', () => {
     it('returns callback result', async () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       const result = await withContext(ctx, () => {
@@ -142,7 +162,8 @@ describe('context', () => {
     it('supports async callbacks', async () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       const result = await withContext(ctx, async () => {
@@ -156,7 +177,8 @@ describe('context', () => {
     it('clears context after callback', async () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       await withContext(ctx, () => {});
@@ -167,15 +189,18 @@ describe('context', () => {
     it('isolates context between concurrent calls', async () => {
       const ctx1 = new RequestContext({
         visitorId: 'visitor_1',
-        sessionId: 'session_1',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
       const ctx2 = new RequestContext({
         visitorId: 'visitor_2',
-        sessionId: 'session_2',
+        ip: '192.168.1.2',
+        userAgent: 'Chrome/120',
       });
       const ctx3 = new RequestContext({
         visitorId: 'visitor_3',
-        sessionId: 'session_3',
+        ip: '192.168.1.3',
+        userAgent: 'Safari/17',
       });
 
       const results = await Promise.all([
@@ -207,7 +232,8 @@ describe('context', () => {
     it('clears the current context', async () => {
       const ctx = new RequestContext({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       await withContext(ctx, () => {

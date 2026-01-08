@@ -49,7 +49,6 @@ describe('track', () => {
 
       const result = await track({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
         eventType: 'page_view',
       });
 
@@ -58,7 +57,6 @@ describe('track', () => {
         eventId: 'evt_abc123',
         eventType: 'page_view',
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
       });
     });
   });
@@ -69,20 +67,22 @@ describe('track', () => {
 
       await track({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
         userId: 'user_123',
         eventType: 'page_view',
         properties: { url: '/pricing' },
+        ip: '192.168.1.1',
+        userAgent: 'Mozilla/5.0',
       });
 
       expect(api.postWithResponse).toHaveBeenCalledWith('/events', {
         events: [
           expect.objectContaining({
             visitor_id: 'visitor_abc',
-            session_id: 'session_xyz',
             user_id: 'user_123',
             event_type: 'page_view',
             properties: { url: '/pricing' },
+            ip: '192.168.1.1',
+            user_agent: 'Mozilla/5.0',
             timestamp: expect.any(String),
           }),
         ],
@@ -95,8 +95,9 @@ describe('track', () => {
       await track({ visitorId: 'visitor_abc', eventType: 'page_view' });
 
       const payload = vi.mocked(api.postWithResponse).mock.calls[0][1] as any;
-      expect(payload.events[0]).not.toHaveProperty('session_id');
       expect(payload.events[0]).not.toHaveProperty('user_id');
+      expect(payload.events[0]).not.toHaveProperty('ip');
+      expect(payload.events[0]).not.toHaveProperty('user_agent');
     });
 
     it('includes ISO8601 timestamp', async () => {
@@ -106,6 +107,19 @@ describe('track', () => {
 
       const payload = vi.mocked(api.postWithResponse).mock.calls[0][1] as any;
       expect(new Date(payload.events[0].timestamp).toISOString()).toBe(payload.events[0].timestamp);
+    });
+
+    it('includes identifier when provided', async () => {
+      vi.mocked(api.postWithResponse).mockResolvedValue({ events: [{ id: 'evt_1' }] });
+
+      await track({
+        visitorId: 'visitor_abc',
+        eventType: 'page_view',
+        identifier: { email: 'test@example.com' },
+      });
+
+      const payload = vi.mocked(api.postWithResponse).mock.calls[0][1] as any;
+      expect(payload.events[0].identifier).toEqual({ email: 'test@example.com' });
     });
   });
 

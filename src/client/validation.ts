@@ -1,6 +1,7 @@
 // Pure validation functions
+// NOTE: Session validation removed in v0.7.0 - server handles session resolution
 
-import type { TrackOptions, ConversionOptions, IdentifyOptions, SessionOptions } from './types';
+import type { TrackOptions, ConversionOptions, IdentifyOptions } from './types';
 
 const isPresent = (value: unknown): boolean =>
   value !== undefined && value !== null && String(value).trim() !== '';
@@ -17,6 +18,3 @@ export const validateConversion = (options: ConversionOptions): boolean =>
 
 export const validateIdentify = (options: IdentifyOptions): boolean =>
   isPresent(options.userId);
-
-export const validateSession = (options: SessionOptions): boolean =>
-  isPresent(options.visitorId) && isPresent(options.sessionId) && isPresent(options.url);

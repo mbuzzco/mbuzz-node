@@ -1,16 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createMiddleware } from '../../src/middleware/express';
-import { init, reset, config } from '../../src/config';
-import * as sessionRequest from '../../src/client/sessionRequest';
-
-vi.mock('../../src/client/sessionRequest', () => ({
-  createSession: vi.fn(),
-}));
+import { init, reset } from '../../src/config';
 
 const mockRequest = (overrides = {}) => ({
   path: '/users',
   url: '/users?page=1',
   protocol: 'https',
+  ip: '192.168.1.100',
+  socket: { remoteAddress: '192.168.1.100' },
+  headers: {
+    'user-agent': 'Mozilla/5.0 Test Browser',
+  },
   get: vi.fn((header: string) => {
     const headers: Record<string, string> = {
       host: 'example.com',
@@ -32,7 +32,6 @@ describe('express middleware', () => {
   beforeEach(() => {
     init({ apiKey: 'sk_test_abc123' });
     vi.clearAllMocks();
-    vi.mocked(sessionRequest.createSession).mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -126,34 +125,8 @@ describe('express middleware', () => {
         })
       );
     });
-  });
 
-  describe('session cookie', () => {
-    it('uses existing session cookie', async () => {
-      const middleware = createMiddleware();
-      const req = mockRequest({
-        cookies: { _mbuzz_vid: 'visitor', _mbuzz_sid: 'existing_session' },
-      });
-      const res = mockResponse();
-      const next = vi.fn();
-
-      await middleware(req as any, res as any, next);
-
-      expect((req as any).mbuzz.sessionId).toBe('existing_session');
-    });
-
-    it('generates new session id when cookie missing', async () => {
-      const middleware = createMiddleware();
-      const req = mockRequest({ cookies: { _mbuzz_vid: 'visitor' } });
-      const res = mockResponse();
-      const next = vi.fn();
-
-      await middleware(req as any, res as any, next);
-
-      expect((req as any).mbuzz.sessionId).toHaveLength(64);
-    });
-
-    it('sets session cookie with 30 minute expiry', async () => {
+    it('only sets visitor cookie (no session cookie)', async () => {
       const middleware = createMiddleware();
       const req = mockRequest();
       const res = mockResponse();
@@ -161,61 +134,23 @@ describe('express middleware', () => {
 
       await middleware(req as any, res as any, next);
 
+      // Should only set visitor cookie, not session cookie
+      expect(res.cookie).toHaveBeenCalledTimes(1);
       expect(res.cookie).toHaveBeenCalledWith(
-        '_mbuzz_sid',
+        '_mbuzz_vid',
         expect.any(String),
-        expect.objectContaining({
-          maxAge: 1800000,
-          httpOnly: true,
-          sameSite: 'lax',
-          path: '/',
-        })
+        expect.any(Object)
       );
     });
   });
 
-  describe('session creation', () => {
-    it('creates session when new session id generated', async () => {
-      const middleware = createMiddleware();
-      const req = mockRequest({ cookies: { _mbuzz_vid: 'visitor' } });
-      const res = mockResponse();
-      const next = vi.fn();
-
-      middleware(req as any, res as any, next);
-
-      // Wait for setImmediate to execute
-      await new Promise((resolve) => setImmediate(resolve));
-
-      expect(sessionRequest.createSession).toHaveBeenCalledWith({
-        visitorId: 'visitor',
-        sessionId: expect.any(String),
-        url: 'https://example.com/users?page=1',
-        referrer: 'https://google.com',
-      });
-    });
-
-    it('does not create session when session cookie exists', async () => {
-      const middleware = createMiddleware();
-      const req = mockRequest({
-        cookies: { _mbuzz_vid: 'visitor', _mbuzz_sid: 'session' },
-      });
-      const res = mockResponse();
-      const next = vi.fn();
-
-      middleware(req as any, res as any, next);
-
-      // Wait for any potential setImmediate to execute
-      await new Promise((resolve) => setImmediate(resolve));
-
-      expect(sessionRequest.createSession).not.toHaveBeenCalled();
-    });
-  });
-
   describe('req.mbuzz', () => {
-    it('attaches mbuzz object to request', async () => {
+    it('attaches mbuzz object with visitorId, ip, and userAgent', async () => {
       const middleware = createMiddleware();
       const req = mockRequest({
-        cookies: { _mbuzz_vid: 'visitor_abc', _mbuzz_sid: 'session_xyz' },
+        cookies: { _mbuzz_vid: 'visitor_abc' },
+        ip: '10.0.0.1',
+        headers: { 'user-agent': 'Chrome/120' },
       });
       const res = mockResponse();
       const next = vi.fn();
@@ -224,9 +159,42 @@ describe('express middleware', () => {
 
       expect((req as any).mbuzz).toEqual({
         visitorId: 'visitor_abc',
-        sessionId: 'session_xyz',
+        ip: '10.0.0.1',
+        userAgent: 'Chrome/120',
         userId: undefined,
       });
+    });
+
+    it('extracts IP from X-Forwarded-For header', async () => {
+      const middleware = createMiddleware();
+      const req = mockRequest({
+        cookies: { _mbuzz_vid: 'visitor_abc' },
+        headers: {
+          'x-forwarded-for': '203.0.113.50, 198.51.100.1',
+          'user-agent': 'Safari/17',
+        },
+      });
+      const res = mockResponse();
+      const next = vi.fn();
+
+      await middleware(req as any, res as any, next);
+
+      expect((req as any).mbuzz.ip).toBe('203.0.113.50');
+    });
+
+    it('falls back to req.ip when no X-Forwarded-For', async () => {
+      const middleware = createMiddleware();
+      const req = mockRequest({
+        cookies: { _mbuzz_vid: 'visitor_abc' },
+        ip: '127.0.0.1',
+        headers: { 'user-agent': 'Test' },
+      });
+      const res = mockResponse();
+      const next = vi.fn();
+
+      await middleware(req as any, res as any, next);
+
+      expect((req as any).mbuzz.ip).toBe('127.0.0.1');
     });
   });
 
