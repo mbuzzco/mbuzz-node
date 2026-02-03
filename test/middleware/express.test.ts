@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMiddleware } from '../../src/middleware/express';
+import { createMiddleware, shouldCreateSession } from '../../src/middleware/express';
 import { init, reset } from '../../src/config';
+
+vi.mock('../../src/api', () => ({
+  post: vi.fn().mockResolvedValue(true),
+}));
+
+import { post } from '../../src/api';
 
 const mockRequest = (overrides = {}) => ({
   path: '/users',
@@ -142,6 +148,27 @@ describe('express middleware', () => {
         expect.any(Object)
       );
     });
+
+    it('visitor cookie set on all requests including non-navigations', async () => {
+      const middleware = createMiddleware();
+      const req = mockRequest({
+        headers: {
+          'user-agent': 'Mozilla/5.0',
+          'sec-fetch-mode': 'cors',
+          'sec-fetch-dest': 'empty',
+        },
+      });
+      const res = mockResponse();
+      const next = vi.fn();
+
+      await middleware(req as any, res as any, next);
+
+      expect(res.cookie).toHaveBeenCalledWith(
+        '_mbuzz_vid',
+        expect.any(String),
+        expect.any(Object)
+      );
+    });
   });
 
   describe('req.mbuzz', () => {
@@ -212,6 +239,259 @@ describe('express middleware', () => {
 
       expect(next).toHaveBeenCalled();
       expect(res.cookie).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('navigation detection', () => {
+    describe('shouldCreateSession (whitelist: Sec-Fetch-* present)', () => {
+      it('creates session for real page navigation', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(true);
+      });
+
+      it('skips session for turbo frame', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'same-origin',
+            'sec-fetch-dest': 'empty',
+            'turbo-frame': 'content_frame',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for htmx request', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'same-origin',
+            'sec-fetch-dest': 'empty',
+            'hx-request': 'true',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for fetch/XHR', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-dest': 'empty',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for prefetch', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+            'sec-purpose': 'prefetch',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for iframe', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'iframe',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+    });
+
+    describe('shouldCreateSession (blacklist fallback: no Sec-Fetch-*)', () => {
+      it('creates session for old browser without framework headers', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/4.0 (compatible; MSIE 8.0)',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(true);
+      });
+
+      it('skips session for old browser with Turbo-Frame', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/4.0',
+            'turbo-frame': 'lazy_banner',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for old browser with HX-Request', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/4.0',
+            'hx-request': 'true',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for old browser with XHR', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/4.0',
+            'x-requested-with': 'XMLHttpRequest',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+
+      it('skips session for old browser with Unpoly', () => {
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/4.0',
+            'x-up-version': '3.0',
+          },
+        });
+
+        expect(shouldCreateSession(req as any)).toBe(false);
+      });
+    });
+
+    describe('session creation via middleware', () => {
+      it('calls POST /sessions for real page navigation', async () => {
+        const middleware = createMiddleware();
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+          },
+        });
+        const res = mockResponse();
+        const next = vi.fn();
+
+        await middleware(req as any, res as any, next);
+
+        expect(post).toHaveBeenCalledWith(
+          '/sessions',
+          expect.objectContaining({
+            session: expect.objectContaining({
+              visitor_id: expect.any(String),
+              session_id: expect.any(String),
+              url: 'https://example.com/users?page=1',
+              device_fingerprint: expect.stringMatching(/^[a-f0-9]{32}$/),
+              started_at: expect.any(String),
+            }),
+          })
+        );
+      });
+
+      it('does not call POST /sessions for sub-requests', async () => {
+        const middleware = createMiddleware();
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-dest': 'empty',
+          },
+        });
+        const res = mockResponse();
+        const next = vi.fn();
+
+        await middleware(req as any, res as any, next);
+
+        expect(post).not.toHaveBeenCalled();
+      });
+
+      it('does not call POST /sessions for turbo frame requests', async () => {
+        const middleware = createMiddleware();
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'same-origin',
+            'sec-fetch-dest': 'empty',
+            'turbo-frame': 'content_frame',
+          },
+        });
+        const res = mockResponse();
+        const next = vi.fn();
+
+        await middleware(req as any, res as any, next);
+
+        expect(post).not.toHaveBeenCalled();
+      });
+
+      it('includes referrer in session payload when present', async () => {
+        const middleware = createMiddleware();
+        const req = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+          },
+        });
+        const res = mockResponse();
+        const next = vi.fn();
+
+        await middleware(req as any, res as any, next);
+
+        expect(post).toHaveBeenCalledWith(
+          '/sessions',
+          expect.objectContaining({
+            session: expect.objectContaining({
+              referrer: 'https://google.com',
+            }),
+          })
+        );
+      });
+
+      it('always calls next() regardless of session creation', async () => {
+        const middleware = createMiddleware();
+        const next = vi.fn();
+
+        // Navigation request
+        const navReq = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'navigate',
+            'sec-fetch-dest': 'document',
+          },
+        });
+        await middleware(navReq as any, mockResponse() as any, next);
+        expect(next).toHaveBeenCalledTimes(1);
+
+        vi.clearAllMocks();
+
+        // Sub-request
+        const subReq = mockRequest({
+          headers: {
+            'user-agent': 'Mozilla/5.0',
+            'sec-fetch-mode': 'cors',
+            'sec-fetch-dest': 'empty',
+          },
+        });
+        await middleware(subReq as any, mockResponse() as any, next);
+        expect(next).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });
