@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.4] - 2026-02-17
+
+### Fixed
+
+- **`identify()` now writes `userId` back to context** — after a successful API call, `userId` is stored in the `AsyncLocalStorage` context so that subsequent `conversion()` calls in the same request can resolve it.
+- **`RequestContext.userId` is now mutable** — was `readonly`, preventing `identify()` from updating it.
+
 ## [0.7.3] - 2026-02-04
 
 ### Added
