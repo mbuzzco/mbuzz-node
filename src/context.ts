@@ -18,7 +18,7 @@ export class RequestContext {
   readonly visitorId: string;
   readonly ip: string;
   readonly userAgent: string;
-  readonly userId?: string;
+  userId?: string;
   readonly url?: string;
   readonly referrer?: string;
 

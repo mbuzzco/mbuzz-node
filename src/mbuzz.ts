@@ -94,9 +94,15 @@ export const identify = async (
 ): Promise<boolean> => {
   const ctx = getContext();
 
-  return identifyUser({
+  const result = await identifyUser({
     userId: userIdValue,
     visitorId: options.visitorId ?? ctx?.visitorId,
     traits: options.traits,
   });
+
+  if (result && ctx) {
+    ctx.userId = String(userIdValue);
+  }
+
+  return result;
 };

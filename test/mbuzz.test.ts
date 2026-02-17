@@ -160,6 +160,55 @@ describe('mbuzz', () => {
 
       expect(result).toEqual(expectedResult);
     });
+
+    it('includes identifier when provided', async () => {
+      vi.mocked(conversionRequest.conversion).mockResolvedValue({
+        success: true,
+        conversionId: 'conv_1',
+      });
+
+      await mbuzz.conversion('purchase', {
+        revenue: 99.99,
+        identifier: { email: 'user@example.com' },
+      });
+
+      expect(conversionRequest.conversion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversionType: 'purchase',
+          revenue: 99.99,
+          identifier: { email: 'user@example.com' },
+        })
+      );
+    });
+
+    it('passes ip and userAgent from context to conversion', async () => {
+      vi.mocked(conversionRequest.conversion).mockResolvedValue({
+        success: true,
+        conversionId: 'conv_1',
+      });
+
+      const ctx = new context.RequestContext({
+        visitorId: 'visitor_abc',
+        ip: '203.0.113.50',
+        userAgent: 'Safari/17',
+      });
+
+      await context.withContext(ctx, async () => {
+        await mbuzz.conversion('signup', {
+          identifier: { email: 'new@example.com' },
+        });
+      });
+
+      expect(conversionRequest.conversion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversionType: 'signup',
+          visitorId: 'visitor_abc',
+          ip: '203.0.113.50',
+          userAgent: 'Safari/17',
+          identifier: { email: 'new@example.com' },
+        })
+      );
+    });
   });
 
   describe('identify', () => {
@@ -206,6 +255,37 @@ describe('mbuzz', () => {
       const result = await mbuzz.identify('user_123');
 
       expect(result).toBe(true);
+    });
+  });
+
+  describe('identify → convert flow', () => {
+    beforeEach(() => {
+      mbuzz.init({ apiKey: 'sk_test_abc123' });
+    });
+
+    it('conversion picks up userId after identify in same request', async () => {
+      vi.mocked(identifyRequest.identify).mockResolvedValue(true);
+      vi.mocked(conversionRequest.conversion).mockResolvedValue({
+        success: true,
+        conversionId: 'conv_1',
+      });
+
+      const ctx = new context.RequestContext({
+        visitorId: 'visitor_abc',
+        ip: '10.0.0.1',
+        userAgent: 'Chrome/120',
+      });
+
+      await context.withContext(ctx, async () => {
+        await mbuzz.identify('user_123');
+        await mbuzz.conversion('purchase', { revenue: 99.99 });
+      });
+
+      expect(conversionRequest.conversion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user_123',
+        })
+      );
     });
   });
 
