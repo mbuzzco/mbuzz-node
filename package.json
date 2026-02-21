@@ -1,6 +1,6 @@
 {
   "name": "mbuzz",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Server-side multi-touch attribution for Node.js",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

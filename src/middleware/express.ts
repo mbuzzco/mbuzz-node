@@ -97,6 +97,7 @@ const createSessionAsync = (
       url,
       referrer,
       device_fingerprint: deviceFingerprint(ip, userAgent),
+      user_agent: userAgent,
       started_at: new Date().toISOString(),
     },
   };
