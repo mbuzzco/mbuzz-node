@@ -90,7 +90,7 @@ app.use(mbuzz.middleware());
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `apiKey` | string | *required* | Your Mbuzz API key |
-| `apiUrl` | string | `https://mbuzz.co/api/v1` | API endpoint URL |
+| `apiUrl` | string | `https://api.mbuzz.co/api/v1` | API endpoint URL |
 | `enabled` | boolean | `true` | Enable/disable tracking |
 | `debug` | boolean | `false` | Enable debug logging |
 | `timeout` | number | `5000` | Request timeout in ms |

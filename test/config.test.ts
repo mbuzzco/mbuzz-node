@@ -22,7 +22,7 @@ describe('config', () => {
 
     it('sets default apiUrl', () => {
       init({ apiKey: 'sk_test_abc123' });
-      expect(config.apiUrl).toBe('https://mbuzz.co/api/v1');
+      expect(config.apiUrl).toBe('https://api.mbuzz.co/api/v1');
     });
 
     it('allows custom apiUrl', () => {

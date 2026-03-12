@@ -8,7 +8,7 @@ export interface MbuzzOptions {
   skipExtensions?: string[];
 }
 
-const DEFAULT_API_URL = 'https://mbuzz.co/api/v1';
+const DEFAULT_API_URL = 'https://api.mbuzz.co/api/v1';
 const DEFAULT_TIMEOUT = 5000;
 
 const DEFAULT_SKIP_PATHS = [
