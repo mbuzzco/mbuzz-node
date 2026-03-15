@@ -25,11 +25,6 @@ describe('config', () => {
       expect(config.apiUrl).toBe('https://api.mbuzz.co/api/v1');
     });
 
-    it('allows custom apiUrl', () => {
-      init({ apiKey: 'sk_test_abc123', apiUrl: 'https://custom.example.com/api' });
-      expect(config.apiUrl).toBe('https://custom.example.com/api');
-    });
-
     it('sets default enabled to true', () => {
       init({ apiKey: 'sk_test_abc123' });
       expect(config.enabled).toBe(true);

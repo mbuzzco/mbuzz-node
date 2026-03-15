@@ -19,7 +19,7 @@ export interface TrackOptions {
 
 export interface TrackResult {
   success: true;
-  eventId: string;
+  eventId?: string;
   eventType: string;
   visitorId?: string;
 }
@@ -41,7 +41,7 @@ export interface ConversionOptions {
 
 export interface ConversionResult {
   success: true;
-  conversionId: string;
+  conversionId?: string;
   attribution?: Record<string, unknown>;
 }
 

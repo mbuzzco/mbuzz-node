@@ -10,8 +10,15 @@ interface ConversionResponse {
   attribution?: Record<string, unknown>;
 }
 
+const isProxyAccepted = (response: unknown): boolean =>
+  !!response && typeof response === 'object' && 'status' in response &&
+  (response as Record<string, unknown>).status === 'accepted';
+
 const parseResponse = (response: ConversionResponse | null): ConversionResult | false => {
   if (!response?.conversion?.id) {
+    if (isProxyAccepted(response)) {
+      return { success: true };
+    }
     return false;
   }
 

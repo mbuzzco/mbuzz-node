@@ -1,6 +1,5 @@
 export interface MbuzzOptions {
   apiKey: string;
-  apiUrl?: string;
   enabled?: boolean;
   debug?: boolean;
   timeout?: number;
@@ -88,7 +87,7 @@ class Config {
     }
 
     this._apiKey = options.apiKey;
-    this._apiUrl = options.apiUrl ?? DEFAULT_API_URL;
+    this._apiUrl = DEFAULT_API_URL;
     this._enabled = options.enabled ?? true;
     this._debug = options.debug ?? false;
     this._timeout = options.timeout ?? DEFAULT_TIMEOUT;

@@ -9,11 +9,18 @@ interface EventsResponse {
   events: Array<{ id: string }>;
 }
 
+const isProxyAccepted = (response: unknown): boolean =>
+  !!response && typeof response === 'object' && 'status' in response &&
+  (response as Record<string, unknown>).status === 'accepted';
+
 const parseResponse = (
   response: EventsResponse | null,
   options: TrackOptions
 ): TrackResult | false => {
   if (!response?.events?.[0]?.id) {
+    if (isProxyAccepted(response)) {
+      return { success: true, eventType: options.eventType, visitorId: options.visitorId };
+    }
     return false;
   }
 
