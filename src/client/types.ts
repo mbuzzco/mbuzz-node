@@ -36,6 +36,12 @@ export interface ConversionOptions {
   properties?: Record<string, unknown>;
   ip?: string;
   userAgent?: string;
+  /**
+   * @deprecated Pass the email or external ID as `userId` instead.
+   * The backend `/conversions` endpoint has never permitted this field and
+   * the events endpoint treats `identifier.email` exactly as `user_id`.
+   * Will be removed in a future major release.
+   */
   identifier?: Identifier;
 }
 
