@@ -7,9 +7,13 @@ import { createMiddleware } from './middleware/express';
 import type { TrackResult } from './client/trackRequest';
 import type { ConversionResult } from './client/conversionRequest';
 import type { Identifier } from './client/types';
+import { warnMissingIdentity, warnInvalid } from './droppedCall';
 
 // Re-export types
 export type { MbuzzOptions, TrackResult, ConversionResult, Identifier };
+
+const isPresent = (value: unknown): boolean =>
+  value !== undefined && value !== null && String(value).trim() !== '';
 
 // Initialize SDK
 export const init = (options: MbuzzOptions): void => initConfig(options);
@@ -35,11 +39,27 @@ export const event = async (
   properties: Record<string, unknown> = {}
 ): Promise<TrackResult | false> => {
   const ctx = getContext();
+  const resolvedVisitorId = ctx?.visitorId;
+  const resolvedUserId = ctx?.userId;
+
+  if (!isPresent(eventType)) {
+    warnInvalid('event', eventType, 'eventType is required');
+    return false;
+  }
+
+  // Must have at least one identifier. Warn rather than drop in silence: with
+  // no visitor and no user there is nothing to attribute this to, and behind a
+  // full-page cache that is the normal case, not an edge one.
+  if (!resolvedVisitorId && !resolvedUserId) {
+    warnMissingIdentity('event', eventType);
+    return false;
+  }
+
   const enrichedProps = ctx ? ctx.enrichProperties(properties) : properties;
 
   return track({
-    visitorId: ctx?.visitorId,
-    userId: ctx?.userId,
+    visitorId: resolvedVisitorId,
+    userId: resolvedUserId,
     eventType,
     properties: enrichedProps,
     ip: ctx?.ip,
@@ -65,11 +85,25 @@ export const conversion = async (
   options: ConversionOptions = {}
 ): Promise<ConversionResult | false> => {
   const ctx = getContext();
+  const resolvedVisitorId = options.visitorId ?? ctx?.visitorId;
+  const resolvedUserId = options.userId ?? ctx?.userId;
+
+  if (!isPresent(conversionType)) {
+    warnInvalid('conversion', conversionType, 'conversionType is required');
+    return false;
+  }
+
+  // A conversion dropped here is lost revenue attribution, so it is never
+  // silent. An eventId alone is enough — it carries its own attribution.
+  if (!resolvedVisitorId && !resolvedUserId && !isPresent(options.eventId)) {
+    warnMissingIdentity('conversion', conversionType);
+    return false;
+  }
 
   return createConversion({
     conversionType,
-    visitorId: options.visitorId ?? ctx?.visitorId,
-    userId: options.userId ?? ctx?.userId,
+    visitorId: resolvedVisitorId,
+    userId: resolvedUserId,
     eventId: options.eventId,
     revenue: options.revenue,
     currency: options.currency,
@@ -93,6 +127,11 @@ export const identify = async (
   options: IdentifyOptions = {}
 ): Promise<boolean> => {
   const ctx = getContext();
+
+  if (!isPresent(userIdValue)) {
+    warnInvalid('identify', String(userIdValue), 'userId is required');
+    return false;
+  }
 
   const result = await identifyUser({
     userId: userIdValue,

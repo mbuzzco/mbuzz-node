@@ -18,6 +18,16 @@ vi.mock('../src/client/identifyRequest', () => ({
   identify: vi.fn(),
 }));
 
+const withVisitor = <T>(fn: () => Promise<T>): Promise<T> =>
+  context.withContext(
+    new context.RequestContext({
+      visitorId: 'visitor_abc',
+      ip: '192.168.1.1',
+      userAgent: 'Mozilla/5.0',
+    }),
+    fn
+  );
+
 describe('mbuzz', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -49,7 +59,7 @@ describe('mbuzz', () => {
         eventType: 'page_view',
       });
 
-      await mbuzz.event('page_view', { url: '/pricing' });
+      await withVisitor(() => mbuzz.event('page_view', { url: '/pricing' }));
 
       expect(trackRequest.track).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -96,7 +106,7 @@ describe('mbuzz', () => {
       const expectedResult = { success: true, eventId: 'evt_123', eventType: 'test' };
       vi.mocked(trackRequest.track).mockResolvedValue(expectedResult as any);
 
-      const result = await mbuzz.event('test');
+      const result = await withVisitor(() => mbuzz.event('test'));
 
       expect(result).toEqual(expectedResult);
     });
@@ -113,7 +123,7 @@ describe('mbuzz', () => {
         conversionId: 'conv_1',
       });
 
-      await mbuzz.conversion('purchase', { revenue: 99.99 });
+      await mbuzz.conversion('purchase', { revenue: 99.99, visitorId: 'visitor_abc' });
 
       expect(conversionRequest.conversion).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -156,7 +166,7 @@ describe('mbuzz', () => {
       };
       vi.mocked(conversionRequest.conversion).mockResolvedValue(expectedResult as any);
 
-      const result = await mbuzz.conversion('purchase');
+      const result = await mbuzz.conversion('purchase', { visitorId: 'visitor_abc' });
 
       expect(result).toEqual(expectedResult);
     });
@@ -169,6 +179,7 @@ describe('mbuzz', () => {
 
       await mbuzz.conversion('purchase', {
         revenue: 99.99,
+        visitorId: 'visitor_abc',
         identifier: { email: 'user@example.com' },
       });
 
