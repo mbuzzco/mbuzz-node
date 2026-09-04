@@ -85,6 +85,41 @@ mbuzz.init({
 app.use(mbuzz.middleware());
 ```
 
+## Full-page caching
+
+If pages are served from a full-page cache (Cloudflare, Varnish, nginx, a CDN), the cache
+answers the request **without entering the Express stack**, so the middleware never runs, no
+visitor cookie is set, and every later event is dropped for having no one to attribute it to.
+The page renders perfectly and nothing is logged — the failure is silent.
+
+`mbuzz.middleware()` already fixes this. It answers `POST /_mbuzz/session`, a path caches don't
+store, and the **server** sets the cookie on that response. There is nothing extra to mount.
+
+Then call it once per page, from your layout:
+
+```html
+<script>
+  fetch('/_mbuzz/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: location.href, referrer: document.referrer || '' }),
+    credentials: 'same-origin',
+    keepalive: true
+  }).catch(function () {});
+</script>
+```
+
+Two things to keep as they are:
+
+- **Inline the script, don't load it as a file.** Asset optimisers delay external scripts until
+  the visitor first interacts. A visitor who lands and converts without clicking anything first
+  would never be established.
+- **`credentials: 'same-origin'` is required**, or the cookie never comes back.
+
+The visitor id is never created or read in JavaScript. It stays `HttpOnly` and server-set, which
+is what preserves its full two-year life — a cookie written by `document.cookie` is capped at
+7 days under Safari's ITP, and 24 hours after an ad click.
+
 ## Configuration Options
 
 | Option | Type | Default | Description |
@@ -116,6 +151,15 @@ const result = mbuzz.event('test');
 if (!result) {
   console.log('Tracking failed (check debug logs)');
 }
+```
+
+A call dropped for having no one to attribute it to warns on `console.warn`, not silently, and
+not only in debug mode:
+
+```
+[mbuzz] dropped event "add_to_cart": no visitorId and no userId. If your pages are served from a
+full-page cache, mount mbuzz.middleware() and call POST /_mbuzz/session from the page — see the
+README's "Full-page caching" section.
 ```
 
 ## Requirements

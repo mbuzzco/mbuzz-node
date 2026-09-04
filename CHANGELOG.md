@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0] - 2026-09-04
+
+### Fixed
+
+- **Attribution behind a full-page cache.** A cached page is answered without entering the Express stack, so the middleware never ran, no visitor cookie was set, and every later event was dropped for having no one to attribute it to — silently, with the page rendering perfectly and nothing logged. `mbuzz.middleware()` now also answers `POST /_mbuzz/session`, a path caches don't store, and the **server** mints the cookie on that response. Call it once per page with a small inline `fetch` — see the README's "Full-page caching" section. The visitor id is never created or read in JavaScript, so it stays `HttpOnly` and keeps its full two-year life; a `document.cookie` id would be capped at 7 days under Safari's ITP, and 24 hours after an ad click. Nothing extra to mount, and the endpoint is checked ahead of `skipPaths` so a customer's own config cannot swallow the one request that still reaches the app.
+
+### Added
+
+- **A dropped call now says why, instead of nothing at all.** `event()`, `conversion()` and `identify()` guarded their send with a bare `return false`: no request, no log. Behind a full-page cache that is the whole failure, and the silence is what made it cost a full day on a live account. They now warn on `console.warn` — deliberately not behind `debug`, since the customers who hit this are exactly the ones not running in debug — naming the call, the reason, and the fix. The guard sits at the public entry point, not at the request layer, so nothing is dropped further in without a warning.
+
 ## [0.8.3] - 2026-05-25
 
 ### Deprecated
