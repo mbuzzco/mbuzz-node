@@ -20,3 +20,7 @@ export const visitorCookieOptions = (secure: boolean): CookieOptions => ({
   path: '/',
   secure,
 });
+
+// The one request that always reaches the app on a cached page. A cache never
+// stores a POST, so this path is the only place the server can still mint.
+export const SESSION_ENDPOINT_PATH = '/_mbuzz/session';

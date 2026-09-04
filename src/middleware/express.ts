@@ -5,6 +5,7 @@ import { post } from '../api';
 import { generateId } from '../utils/identifier';
 import { deviceFingerprint } from '../utils/fingerprint';
 import { VISITOR_COOKIE, visitorCookieOptions } from './cookies';
+import { isSessionRequest, handleSessionRequest } from './sessionEndpoint';
 
 export interface MbuzzRequest {
   visitorId: string;
@@ -112,14 +113,22 @@ export const createMiddleware = (): ExpressMiddleware => {
       return next();
     }
 
-    if (config.shouldSkipPath(req.path)) {
-      return next();
-    }
-
     const visitor = getVisitorId(req);
     const ip = getClientIp(req);
     const userAgent = getUserAgent(req);
     const secure = isSecure(req);
+
+    // Ahead of shouldSkipPath: on a cached page this is the only request that
+    // reaches the app at all, so a skipPaths entry must not be able to swallow
+    // it. It answers here rather than calling next() — there is no route behind
+    // it.
+    if (isSessionRequest(req)) {
+      return handleSessionRequest(req, res, visitor.id, ip, userAgent, secure);
+    }
+
+    if (config.shouldSkipPath(req.path)) {
+      return next();
+    }
 
     attachMbuzz(req, visitor.id, ip, userAgent);
     setCookie(res, visitor.id, secure);
