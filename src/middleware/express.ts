@@ -4,7 +4,7 @@ import { config } from '../config';
 import { post } from '../api';
 import { generateId } from '../utils/identifier';
 import { deviceFingerprint } from '../utils/fingerprint';
-import { VISITOR_COOKIE, visitorCookieOptions } from './cookies';
+import { VISITOR_COOKIE } from './cookies';
 import { isSessionRequest, handleSessionRequest } from './sessionEndpoint';
 
 export interface MbuzzRequest {
@@ -50,10 +50,6 @@ const getClientIp = (req: Request): string => {
 
 const getUserAgent = (req: Request): string => {
   return req.headers?.['user-agent'] ?? 'unknown';
-};
-
-const setCookie = (res: Response, visitorId: string, secure: boolean): void => {
-  res.cookie(VISITOR_COOKIE, visitorId, visitorCookieOptions(secure));
 };
 
 const attachMbuzz = (req: Request, visitorId: string, ip: string, userAgent: string): void => {
@@ -130,8 +126,18 @@ export const createMiddleware = (): ExpressMiddleware => {
       return next();
     }
 
+    // Only a visitor the browser already holds. This response may be stored by
+    // a full-page cache and replayed to everyone, so setting a cookie here
+    // would put it in that cache and hand every later visitor the same id —
+    // unrelated people merged into one journey. Corruption, not loss: every row
+    // still exists, each attributed to the wrong person, and nothing looks
+    // missing. A first-time visitor is established a moment later by the
+    // session endpoint above, whose POST no cache stores.
+    if (visitor.isNew) {
+      return next();
+    }
+
     attachMbuzz(req, visitor.id, ip, userAgent);
-    setCookie(res, visitor.id, secure);
 
     if (shouldCreateSession(req)) {
       createSessionAsync(

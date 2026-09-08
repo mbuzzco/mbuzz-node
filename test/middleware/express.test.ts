@@ -8,6 +8,8 @@ vi.mock('../../src/api', () => ({
 
 import { post } from '../../src/api';
 
+const KNOWN_VISITOR = 'a1b2c3d4'.repeat(8);
+
 const mockRequest = (overrides = {}) => ({
   path: '/users',
   url: '/users?page=1',
@@ -24,7 +26,10 @@ const mockRequest = (overrides = {}) => ({
     };
     return headers[header.toLowerCase()];
   }),
-  cookies: {},
+  // The page path no longer mints (a cached Set-Cookie would hand every visitor
+  // the same id), so the ordinary request carries the cookie the session
+  // endpoint already gave the browser. Override with {} for a first-time visitor.
+  cookies: { _mbuzz_vid: KNOWN_VISITOR },
   ...overrides,
 });
 
@@ -85,7 +90,7 @@ describe('express middleware', () => {
       await middleware(req as any, res as any, next);
 
       expect(next).toHaveBeenCalled();
-      expect(res.cookie).toHaveBeenCalled();
+      expect((req as any).mbuzz).toBeDefined();
     });
   });
 
@@ -101,7 +106,9 @@ describe('express middleware', () => {
       expect((req as any).mbuzz.visitorId).toBe('existing_visitor');
     });
 
-    it('generates new visitor id when cookie missing', async () => {
+    it('tracks nothing for a visitor it has never seen', async () => {
+      // No cookie means nobody to attribute to. The session endpoint
+      // establishes them a moment later; this request predates them.
       const middleware = createMiddleware();
       const req = mockRequest({ cookies: {} });
       const res = mockResponse();
@@ -109,10 +116,16 @@ describe('express middleware', () => {
 
       await middleware(req as any, res as any, next);
 
-      expect((req as any).mbuzz.visitorId).toHaveLength(64);
+      expect((req as any).mbuzz).toBeUndefined();
+      expect(next).toHaveBeenCalled();
     });
 
-    it('sets visitor cookie with correct options', async () => {
+    it('never sets a cookie on a page response', async () => {
+      // A page response may be stored by a full-page cache and replayed to
+      // every visitor. A Set-Cookie in that cache hands everyone the same id
+      // and merges unrelated people into one journey — corruption, not loss.
+      // Only the session endpoint mints; its cookie options are asserted in
+      // sessionEndpoint.test.ts.
       const middleware = createMiddleware();
       const req = mockRequest();
       const res = mockResponse();
@@ -120,36 +133,12 @@ describe('express middleware', () => {
 
       await middleware(req as any, res as any, next);
 
-      expect(res.cookie).toHaveBeenCalledWith(
-        '_mbuzz_vid',
-        expect.any(String),
-        expect.objectContaining({
-          maxAge: 63072000000,
-          httpOnly: true,
-          sameSite: 'lax',
-          path: '/',
-        })
-      );
+      expect(res.cookie).not.toHaveBeenCalled();
     });
 
-    it('only sets visitor cookie (no session cookie)', async () => {
-      const middleware = createMiddleware();
-      const req = mockRequest();
-      const res = mockResponse();
-      const next = vi.fn();
-
-      await middleware(req as any, res as any, next);
-
-      // Should only set visitor cookie, not session cookie
-      expect(res.cookie).toHaveBeenCalledTimes(1);
-      expect(res.cookie).toHaveBeenCalledWith(
-        '_mbuzz_vid',
-        expect.any(String),
-        expect.any(Object)
-      );
-    });
-
-    it('visitor cookie set on all requests including non-navigations', async () => {
+    it('never sets a cookie on a sub-request either', async () => {
+      // A sub-request response is as cacheable as any other, so it carries no
+      // Set-Cookie. It used to, which put one in the cache.
       const middleware = createMiddleware();
       const req = mockRequest({
         headers: {
@@ -163,11 +152,7 @@ describe('express middleware', () => {
 
       await middleware(req as any, res as any, next);
 
-      expect(res.cookie).toHaveBeenCalledWith(
-        '_mbuzz_vid',
-        expect.any(String),
-        expect.any(Object)
-      );
+      expect(res.cookie).not.toHaveBeenCalled();
     });
   });
 
