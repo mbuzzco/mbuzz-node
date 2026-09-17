@@ -222,6 +222,34 @@ describe('session endpoint', () => {
     expect(post).toHaveBeenCalledWith('/sessions', expect.any(Object));
   });
 
+  // The visitor's IP, which mbuzz needs for Meta's `client_ip_address` — Meta
+  // documents it as required for website events.
+  //
+  // It was computed here and then DROPPED: `createSessionAsync` takes `ip` to
+  // build `deviceFingerprint(ip, userAgent)` and simply left it out of the
+  // payload. Events and conversions have always sent one; only sessions did
+  // not. Found by the SDK integration harness against the Ruby SDK — every
+  // layer was correct on its own — and the same omission was here.
+  it('sends the visitor IP on the session payload', async () => {
+    await createMiddleware()(mockRequest() as any, mockResponse() as any, vi.fn());
+
+    const [, payload] = vi.mocked(post).mock.calls.at(-1)!;
+
+    expect((payload as any).session.ip).toBe('203.0.113.9');
+  });
+
+  // The fingerprint is SHA256(ip|user_agent), so the two must describe the same
+  // request or the session resolves against a device nobody used.
+  it('sends the same IP the device fingerprint was built from', async () => {
+    const req = mockRequest({ ip: '198.51.100.7', socket: { remoteAddress: '198.51.100.7' } });
+
+    await createMiddleware()(req as any, mockResponse() as any, vi.fn());
+
+    const [, payload] = vi.mocked(post).mock.calls.at(-1)!;
+
+    expect((payload as any).session.ip).toBe('198.51.100.7');
+  });
+
   it('does nothing when the SDK is disabled', async () => {
     reset();
     init({ apiKey: 'sk_test_abc123', enabled: false });

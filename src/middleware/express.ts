@@ -95,6 +95,11 @@ const createSessionAsync = (
       referrer,
       device_fingerprint: deviceFingerprint(ip, userAgent),
       user_agent: userAgent,
+      // The visitor's address. mbuzz sends it to Meta as
+      // `client_ip_address`, which Meta documents as required for website
+      // events. It was already computed for the fingerprint above and then
+      // omitted here until 0.10.1.
+      ip,
       started_at: new Date().toISOString(),
     },
   };

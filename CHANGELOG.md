@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.10.1] - 2026-09-17
+
+### Fixed — the visitor's IP now reaches mbuzz on session create
+
+- **`POST /api/v1/sessions` now carries `ip`.** Both middlewares already had the visitor's address —
+  it is half of `device_fingerprint = SHA256(ip|user_agent)` — and both left it out of the session
+  payload. Events and conversions have always sent one; only sessions did not.
+- **Why it matters.** mbuzz sends Meta's Conversions API `client_ip_address`, which Meta documents as
+  **required** for website events, and a session with no address means every event resolved through
+  it carries none either. Upgrading improves Event Match Quality for anyone using conversion
+  feedback; it changes nothing else.
+- **No API change.** Both `createSessionAsync` call sites already received the IP, so no caller
+  changes and no configuration is needed.
+
+Found by the SDK integration harness against the Ruby SDK — every layer was correct on its own, so
+only a real request through a real app could tell the visitor's address from the app server's — and
+the same omission was here.
+
 ## [0.10.0] - 2026-09-08
 
 ### BREAKING — the page snippet is now required
