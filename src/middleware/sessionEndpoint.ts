@@ -5,7 +5,9 @@ import { generateId } from '../utils/identifier';
 import { deviceFingerprint } from '../utils/fingerprint';
 import {
   VISITOR_COOKIE,
+  FBP_COOKIE,
   SESSION_ENDPOINT_PATH,
+  readFbp,
   visitorCookieOptions,
 } from './cookies';
 
@@ -53,7 +55,8 @@ const createSessionAsync = (
   visitorId: string,
   body: SessionBody,
   ip: string,
-  userAgent: string
+  userAgent: string,
+  fbp?: string
 ): void => {
   const payload = {
     session: {
@@ -71,6 +74,8 @@ const createSessionAsync = (
       // omitted here until 0.10.1.
       ip,
       started_at: new Date().toISOString(),
+      // Omitted, not null, when the visitor has none.
+      ...(fbp ? { fbp } : {}),
     },
   };
 
@@ -90,7 +95,7 @@ export const handleSessionRequest = (
   userAgent: string,
   secure: boolean
 ): void => {
-  createSessionAsync(visitorId, parseBody(req), ip, userAgent);
+  createSessionAsync(visitorId, parseBody(req), ip, userAgent, readFbp(req.cookies?.[FBP_COOKIE]));
 
   res.cookie(VISITOR_COOKIE, visitorId, visitorCookieOptions(secure));
   res.set('Cache-Control', NO_STORE);

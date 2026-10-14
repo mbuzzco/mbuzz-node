@@ -4,7 +4,7 @@ import { config } from '../config';
 import { post } from '../api';
 import { generateId } from '../utils/identifier';
 import { deviceFingerprint } from '../utils/fingerprint';
-import { VISITOR_COOKIE } from './cookies';
+import { VISITOR_COOKIE, FBP_COOKIE, readFbp } from './cookies';
 import { isSessionRequest, handleSessionRequest } from './sessionEndpoint';
 
 export interface MbuzzRequest {
@@ -85,7 +85,8 @@ const createSessionAsync = (
   url: string,
   referrer: string | undefined,
   ip: string,
-  userAgent: string
+  userAgent: string,
+  fbp?: string
 ): void => {
   const payload = {
     session: {
@@ -101,6 +102,8 @@ const createSessionAsync = (
       // omitted here until 0.10.1.
       ip,
       started_at: new Date().toISOString(),
+      // Omitted, not null, when the visitor has none.
+      ...(fbp ? { fbp } : {}),
     },
   };
 
@@ -150,7 +153,8 @@ export const createMiddleware = (): ExpressMiddleware => {
         getFullUrl(req),
         getReferrer(req),
         ip,
-        userAgent
+        userAgent,
+        readFbp(req.cookies?.[FBP_COOKIE])
       );
     }
 

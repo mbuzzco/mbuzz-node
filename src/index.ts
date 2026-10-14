@@ -9,6 +9,9 @@ export {
   userId,
 } from './mbuzz';
 
+// Integration testing only: refuses unless the key is sk_test_.
+export { setApiUrlForTesting } from './config';
+
 // Types
 export type { MbuzzOptions } from './config';
 export type { TrackResult } from './client/trackRequest';

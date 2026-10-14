@@ -96,6 +96,24 @@ class Config {
     this._initialized = true;
   }
 
+  /**
+   * Point the SDK at a different API host. For integration testing only.
+   *
+   * `apiUrl` was deliberately removed from init() in 0.8.2 so a production
+   * install can never be redirected away from api.mbuzz.co by configuration.
+   * That is still true: this refuses unless the configured key is `sk_test_`,
+   * so only a test account can be redirected.
+   */
+  setApiUrlForTesting(apiUrl: string): void {
+    if (!this._apiKey.startsWith('sk_test_')) {
+      throw new Error(
+        `setApiUrlForTesting() requires an sk_test_ key: a live install must never be redirected away from ${DEFAULT_API_URL}`
+      );
+    }
+
+    this._apiUrl = apiUrl.replace(/\/+$/, '');
+  }
+
   reset(): void {
     this._apiKey = '';
     this._apiUrl = DEFAULT_API_URL;
@@ -128,3 +146,4 @@ export const config = new Config();
 // Convenience exports
 export const init = (options: MbuzzOptions): void => config.init(options);
 export const reset = (): void => config.reset();
+export const setApiUrlForTesting = (apiUrl: string): void => config.setApiUrlForTesting(apiUrl);

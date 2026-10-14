@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.11.0] - 2026-10-14
+
+### Added
+
+- **Meta's `_fbp` is forwarded on the session call.** The SDK reads the `_fbp` cookie the customer's
+  Meta Pixel already set and sends it as `fbp` on the session payload, on both paths (the session
+  endpoint and the page middleware). Meta merges a server event with the browser Pixel's event on
+  `event_name` + `fbp` when the event IDs differ, so without it every server `Lead` counted as a
+  second one. Accepts Meta's `fb.<n>.<ts>.<random>` and the optional appendix its server-side
+  Parameter Builder adds (`...AQECAQIB`); anything else is dropped. Never written, never invented.
+  The key is omitted, not null, when the cookie is absent or malformed. No install change needed
+  beyond `cookie-parser`, which `middleware()` already requires.
+- **`setApiUrlForTesting(url)`.** Points the SDK at a local API for integration tests. Refuses
+  unless the configured key is `sk_test_`, so a live install still cannot be redirected by
+  configuration (`apiUrl` stays removed from `init()` since 0.8.2).
+
 ## [0.10.1] - 2026-09-17
 
 ### Fixed — the visitor's IP now reaches mbuzz on session create

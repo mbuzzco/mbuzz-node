@@ -85,6 +85,32 @@ describe('config', () => {
     });
   });
 
+  describe('setApiUrlForTesting', () => {
+    it('redirects a test key to a local API', () => {
+      init({ apiKey: 'sk_test_abc' });
+
+      config.setApiUrlForTesting('http://localhost:3200/api/v1/');
+
+      expect(config.apiUrl).toBe('http://localhost:3200/api/v1');
+    });
+
+    it('refuses a live key, so production can never be redirected by configuration', () => {
+      init({ apiKey: 'sk_live_abc' });
+
+      expect(() => config.setApiUrlForTesting('http://localhost:3200/api/v1')).toThrow(/sk_test_/);
+      expect(config.apiUrl).toBe('https://api.mbuzz.co/api/v1');
+    });
+
+    it('is cleared by reset', () => {
+      init({ apiKey: 'sk_test_abc' });
+      config.setApiUrlForTesting('http://localhost:3200/api/v1');
+
+      reset();
+
+      expect(config.apiUrl).toBe('https://api.mbuzz.co/api/v1');
+    });
+  });
+
   describe('isInitialized', () => {
     it('returns false before init', () => {
       expect(config.isInitialized).toBe(false);

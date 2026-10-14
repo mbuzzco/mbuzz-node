@@ -2,7 +2,7 @@ import * as https from 'node:https';
 import * as http from 'node:http';
 import { config } from './config';
 
-const VERSION = '0.1.0';
+const VERSION = '0.11.0';
 
 function debugLog(message: string, data?: unknown): void {
   if (config.debug) {
